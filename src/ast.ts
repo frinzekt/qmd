@@ -31,7 +31,7 @@ type QueryType = import("web-tree-sitter").Query;
 // Language Detection
 // =============================================================================
 
-export type SupportedLanguage = "typescript" | "tsx" | "javascript" | "python" | "go" | "rust";
+export type SupportedLanguage = "typescript" | "tsx" | "javascript" | "python" | "go" | "rust" | "kotlin";
 
 const EXTENSION_MAP: Record<string, SupportedLanguage> = {
   ".ts": "typescript",
@@ -45,6 +45,8 @@ const EXTENSION_MAP: Record<string, SupportedLanguage> = {
   ".py": "python",
   ".go": "go",
   ".rs": "rust",
+  ".kt": "kotlin",
+  ".kts": "kotlin",
 };
 
 /**
@@ -70,6 +72,7 @@ const GRAMMAR_MAP: Record<SupportedLanguage, { pkg: string; wasm: string }> = {
   python:     { pkg: "tree-sitter-python",     wasm: "tree-sitter-python.wasm" },
   go:         { pkg: "tree-sitter-go",         wasm: "tree-sitter-go.wasm" },
   rust:       { pkg: "tree-sitter-rust",        wasm: "tree-sitter-rust.wasm" },
+  kotlin:     { pkg: "tree-sitter-kotlin",     wasm: "tree-sitter-kotlin.wasm" },
 };
 
 // =============================================================================
@@ -140,6 +143,14 @@ const LANGUAGE_QUERIES: Record<SupportedLanguage, string> = {
     (use_declaration) @import
     (type_item) @type
     (mod_item) @mod
+  `,
+  kotlin: `
+    (class_declaration) @class
+    (function_declaration) @func
+    (object_declaration) @class
+    (companion_object) @class
+    (secondary_constructor) @func
+    (import_header) @import
   `,
 };
 
@@ -215,7 +226,7 @@ function resolveGrammarPath(language: SupportedLanguage): string {
 async function loadGrammar(language: SupportedLanguage): Promise<LanguageType | null> {
   if (failedLanguages.has(language)) return null;
 
-  const wasmKey = GRAMMAR_MAP[language].wasm;
+  const { wasm: wasmKey } = GRAMMAR_MAP[language];
   if (!grammarCache.has(wasmKey)) {
     grammarCache.set(wasmKey, (async () => {
       const path = resolveGrammarPath(language);

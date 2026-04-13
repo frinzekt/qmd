@@ -8,6 +8,44 @@ QMD combines BM25 full-text search, vector semantic search, and LLM re-ranking�
 
 You can read more about QMD's progress in the [CHANGELOG](CHANGELOG.md).
 
+## Fork Changes (frinzekt/qmd)
+
+### 1. What changed
+- Added Kotlin (`.kt`, `.kts`) as a supported AST-aware chunking language
+- Compiled `tree-sitter-kotlin.wasm` from [fwcd/tree-sitter-kotlin](https://github.com/fwcd/tree-sitter-kotlin) and bundled in `assets/grammars/`
+- Added Kotlin tree-sitter queries for class, function, object, companion object declarations
+- Fixed missing `transaction()` method in `Database` interface (`src/db.ts`)
+
+### 2. Why the fork exists
+- The upstream `tree-sitter-kotlin` npm package ships C source but NO prebuilt `.wasm` file
+- Other language grammars (python, go, rust, typescript) include their `.wasm` in the npm package — kotlin doesn't
+- qmd uses `web-tree-sitter` (WASM-based), so we needed to compile the WASM ourselves
+- The WASM needs to be placed at `node_modules/tree-sitter-kotlin/tree-sitter-kotlin.wasm` for the resolver to find it
+
+### 3. Installation
+```bash
+# Install from this fork
+npm install -g frinzekt/qmd
+
+# After install, copy the bundled WASM to node_modules
+cp assets/grammars/tree-sitter-kotlin.wasm node_modules/tree-sitter-kotlin/
+```
+
+### 4. How to return to upstream
+When either of these happens, this fork can be retired:
+- `fwcd/tree-sitter-kotlin` starts shipping `.wasm` in their npm package (like other grammars do)
+- `tobi/qmd` adds Kotlin support upstream
+
+To switch back:
+```bash
+npm install -g @tobilu/qmd
+```
+
+### 5. Files changed from upstream
+- `src/ast.ts` — Added kotlin to `SupportedLanguage`, `EXTENSION_MAP`, `GRAMMAR_MAP`, `LANGUAGE_QUERIES`
+- `src/db.ts` — Added `transaction()` to `Database` interface
+- `assets/grammars/tree-sitter-kotlin.wasm` — Compiled WASM grammar (new file)
+
 ## Quick Start
 
 ```sh

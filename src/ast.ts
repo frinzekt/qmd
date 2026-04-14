@@ -19,7 +19,9 @@
  */
 
 import { createRequire } from "node:module";
-import { extname } from "node:path";
+import { extname, join, dirname } from "node:path";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import type { BreakPoint } from "./store.js";
 
 // web-tree-sitter types — imported dynamically to avoid top-level WASM init
@@ -31,7 +33,7 @@ type QueryType = import("web-tree-sitter").Query;
 // Language Detection
 // =============================================================================
 
-export type SupportedLanguage = "typescript" | "tsx" | "javascript" | "python" | "go" | "rust" | "kotlin";
+export type SupportedLanguage = "typescript" | "tsx" | "javascript" | "python" | "go" | "rust" | "kotlin" | "java";
 
 const EXTENSION_MAP: Record<string, SupportedLanguage> = {
   ".ts": "typescript",
@@ -47,6 +49,7 @@ const EXTENSION_MAP: Record<string, SupportedLanguage> = {
   ".rs": "rust",
   ".kt": "kotlin",
   ".kts": "kotlin",
+  ".java": "java",
 };
 
 /**
@@ -73,6 +76,7 @@ const GRAMMAR_MAP: Record<SupportedLanguage, { pkg: string; wasm: string }> = {
   go:         { pkg: "tree-sitter-go",         wasm: "tree-sitter-go.wasm" },
   rust:       { pkg: "tree-sitter-rust",        wasm: "tree-sitter-rust.wasm" },
   kotlin:     { pkg: "tree-sitter-kotlin",     wasm: "tree-sitter-kotlin.wasm" },
+  java:       { pkg: "tree-sitter-java",       wasm: "tree-sitter-java.wasm" },
 };
 
 // =============================================================================
@@ -152,6 +156,14 @@ const LANGUAGE_QUERIES: Record<SupportedLanguage, string> = {
     (secondary_constructor) @func
     (import_header) @import
   `,
+  java: `
+    (class_declaration) @class
+    (method_declaration) @func
+    (constructor_declaration) @func
+    (interface_declaration) @class
+    (enum_declaration) @class
+    (import_declaration) @import
+  `,
 };
 
 /**
@@ -216,7 +228,14 @@ async function ensureInit(): Promise<void> {
 function resolveGrammarPath(language: SupportedLanguage): string {
   const { pkg, wasm } = GRAMMAR_MAP[language];
   const require = createRequire(import.meta.url);
-  return require.resolve(`${pkg}/${wasm}`);
+  try {
+    return require.resolve(`${pkg}/${wasm}`);
+  } catch {
+    // Fallback: check assets/grammars/ (used for grammars not shipped in npm package)
+    const localPath = join(dirname(fileURLToPath(import.meta.url)), "../../assets/grammars", wasm);
+    if (existsSync(localPath)) return localPath;
+    throw new Error(`Grammar not found for ${language}: tried ${pkg}/${wasm} and assets/grammars/${wasm}`);
+  }
 }
 
 /**
